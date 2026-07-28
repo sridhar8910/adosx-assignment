@@ -17,10 +17,10 @@ DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 # Database credentials — required; PostgreSQL only
 try:
     DB_PASSWORD = config('DB_PASSWORD')
-except UndefinedValueError:
+except UndefinedValueError as err:
     raise ValueError(
         "DB_PASSWORD is not set. Copy .env.example to .env and set DB_PASSWORD."
-    )
+    ) from err
 
 DB_NAME = config('DB_NAME', default='adosx_db')
 DB_USER = config('DB_USER', default='postgres')
