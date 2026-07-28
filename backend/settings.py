@@ -3,9 +3,22 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# ---------------------------------------------------------------------------
+# Lightweight .env loader — no extra dependencies required.
+# If a .env file exists at the project root, its KEY=VALUE lines are loaded
+# into os.environ before any config is read. Lines starting with # are ignored.
+# Values already set in the shell environment take precedence.
+# ---------------------------------------------------------------------------
+_env_file = BASE_DIR / '.env'
+if _env_file.exists():
+    for _line in _env_file.read_text(encoding='utf-8').splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith('#') and '=' in _line:
+            _key, _, _val = _line.partition('=')
+            os.environ.setdefault(_key.strip(), _val.strip())
+
 # Secret key and DB credentials come from environment variables.
-# For local dev, copy .env.example to .env and fill in values, then either
-# export them in your shell or use a tool like python-decouple.
+# Copy .env.example to .env, set DB_PASSWORD, and the loader above picks it up.
 SECRET_KEY = os.environ.get(
     'DJANGO_SECRET_KEY',
     'django-insecure-local-dev-only-do-not-use-in-production'
