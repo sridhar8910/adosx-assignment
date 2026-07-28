@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   quality:
@@ -12,33 +14,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
+          cache: "pip"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Install linting/formatting tools
-        run: pip install --upgrade ruff isort black
+      - name: Ruff lint
+        run: |
+          ruff check .
 
+      - name: Ruff format check
+        run: |
+          ruff format --check .
 
-      - name: Lint with ruff
-        run: ruff check .
-
-      - name: Format check with ruff
-        run: ruff format --check .
-
-      - name: Type check with mypy
-        run: mypy reconciliation
+      - name: MyPy type check
+        run: |
+          mypy reconciliation
 
       - name: Run tests
-        run: python -m pytest --tb=short -q
         env:
           DJANGO_SETTINGS_MODULE: backend.test_settings
           DJANGO_SECRET_KEY: ci-only-not-a-real-secret
+        run: |
+          python -m pytest --tb=short -q
