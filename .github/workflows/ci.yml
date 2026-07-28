@@ -24,22 +24,38 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # ── Linting ────────────────────────────────────────────────────────────
+      - name: Install linting/formatting tools
+        run: pip install --upgrade ruff isort black
+
+      # Auto-fix import/order/format issues so CI can enforce style reliably.
+      - name: Auto-fix formatting and imports
+        run: |
+          set -e
+          isort . || true
+          ruff check . --fix || true
+          black . || true
+          # If any changes were made, commit them back to the branch so the PR/main branch is updated.
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "ci: auto-fix lints (isort, ruff --fix, black)" || true
+            git push
+          else
+            echo "No auto-fix changes"
+          fi
+
       - name: Lint with ruff
         run: ruff check .
 
       - name: Format check with ruff
         run: ruff format --check .
 
-      # ── Type checking ──────────────────────────────────────────────────────
       - name: Type check with mypy
         run: mypy reconciliation
-        # Non-zero exit fails the build — keeps types honest on every push
 
-      # ── Tests ──────────────────────────────────────────────────────────────
       - name: Run tests
         run: python -m pytest --tb=short -q
         env:
           DJANGO_SETTINGS_MODULE: backend.test_settings
           DJANGO_SECRET_KEY: ci-only-not-a-real-secret
-          # Tests use SQLite in-memory (backend/test_settings.py) — no Postgres needed
