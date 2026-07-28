@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-local-dev-only-change-in-production')
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
-# Database credentials — ALL required, no hardcoded fallbacks
+# Database credentials — required; PostgreSQL only
 try:
     DB_PASSWORD = config('DB_PASSWORD')
 except UndefinedValueError:

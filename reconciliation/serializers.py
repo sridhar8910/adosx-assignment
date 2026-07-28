@@ -4,6 +4,7 @@ from .models import Disagreement, ImportIssue
 
 class DisagreementSerializer(serializers.ModelSerializer):
     org_id = serializers.CharField(source='location.org_id', read_only=True)
+    location_id = serializers.CharField(source='location.location_id', read_only=True)
     location_name = serializers.CharField(source='location.location_name', read_only=True)
     reason_display = serializers.CharField(source='get_reason_display', read_only=True)
 

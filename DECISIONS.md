@@ -2,7 +2,7 @@
 
 **1. PostgreSQL for the database**
 Alternative: SQLite.
-PostgreSQL is the production-appropriate choice for a multi-tenant app with real concurrent writers and indexed queries. SQLite has no row-level locking and would be the wrong choice once more than one process touches the data. SQLite is still used for the test suite (via `backend/test_settings.py`) so tests run without any external dependency.
+PostgreSQL is the production-appropriate choice for a multi-tenant app with real concurrent writers and indexed queries. SQLite has no row-level locking and would be the wrong choice once more than one process touches the data. Tests also run against PostgreSQL (`adosx_test_db`) so dev and test environments match.
 
 **2. Materialise disagreements into a DB table rather than computing on request**
 Alternative: run the comparison query on every API call.

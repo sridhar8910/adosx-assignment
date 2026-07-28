@@ -146,13 +146,14 @@ class TestUnparseableValue:
     """System B entry exists but its value field could not be parsed."""
 
     def test_unparseable_flagged(self):
-        records = [make_record('REC-0001', total_value='183244.16')]
+        # REC-1050 / ENT/2026/4050: blank value in system_b.csv → NULL in DB
+        records = [make_record('REC-1050', total_value='160405.85')]
         entries = [
             make_entry(
-                'ENT-0001',
-                resolved_record_id='REC-0001',
-                value=None,          # importer could not parse — stored as NULL
-                value_raw='1,25,400.00',
+                'ENT/2026/4050',
+                resolved_record_id='REC-1050',
+                value=None,
+                value_raw='',
             )
         ]
 
@@ -160,8 +161,8 @@ class TestUnparseableValue:
 
         unparseable = [r for r in results if r['reason'] == 'UNPARSEABLE_VALUE']
         assert len(unparseable) == 1
-        assert unparseable[0]['value_b_raw'] == '1,25,400.00'
-        assert unparseable[0]['entry_id_b'] == 'ENT-0001'
+        assert unparseable[0]['value_b_raw'] == ''
+        assert unparseable[0]['entry_id_b'] == 'ENT/2026/4050'
 
     def test_parseable_value_not_flagged_as_unparseable(self):
         records = [make_record('REC-0001', total_value='100.00')]

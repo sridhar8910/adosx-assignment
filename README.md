@@ -2,7 +2,7 @@
 
 A full-stack tool that loads two systems' records of the same events, finds where they disagree, and shows those disagreements per tenant.
 
-**Stack:** Django 6 + Django REST Framework · React 18 + Vite · PostgreSQL / SQLite
+**Stack:** Django 6 + Django REST Framework · React 18 + Vite · PostgreSQL
 
 ---
 
@@ -12,15 +12,15 @@ A full-stack tool that loads two systems' records of the same events, finds wher
 
 - Python 3.12+
 - Node.js 18+ and npm
-- PostgreSQL 14+ running locally (or SQLite)
+- PostgreSQL 14+ running locally
 
 ### Database setup
 
-By default, the project connects to PostgreSQL (`adosx_db`). Make sure PostgreSQL is running on `localhost:5432` with user `postgres` and password `2828`.
+Copy `.env.example` to `.env` and set `DB_PASSWORD` to your local Postgres password. Create the databases if needed:
 
 ```bash
-# PostgreSQL Setup (if creating database manually via psql)
 psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE adosx_db;"
+psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE adosx_test_db;"   # for pytest
 ```
 
 ### Backend
@@ -62,6 +62,8 @@ Open `http://localhost:5173`. The Vite dev server proxies `/api/*` to Django.
 
 ### Tests
 
+Requires PostgreSQL running (uses `adosx_test_db` by default — see `.env.example`).
+
 ```bash
 python -m pip install pytest pytest-django
 python -m pytest
@@ -72,22 +74,23 @@ python -m pytest
 ## What I built
 
 **Importer (`load_data` management command)**
-Reads `locations.csv`, `system_a.csv`, and `system_b.csv`. Every anomaly is logged to an `ImportIssue` table — nothing is silently dropped. Dirty `record_ref` values (`rec1034`, `1112`, ` REC - 1070 `) are normalised to canonical form before FK lookup. Unparseable numbers (the Indian-style `1,25,400.00`) are stored as NULL with the raw string preserved.
+Reads `locations.csv`, `system_a.csv`, and `system_b.csv`. Every anomaly is logged to an `ImportIssue` table — nothing is silently dropped. Dirty `record_ref` values (`rec1034`, `1112`, ` REC - 1070 `) are normalised to canonical form before FK lookup. Comma-separated numbers (including Indian-style `1,25,400.00`) are parsed by stripping commas; the original string is preserved in `value_raw`. Truly unparseable or blank values are stored as NULL with the raw string kept for display (e.g. REC-1050's blank System B value).
 
 **Reconciliation engine (`reconciler.py`)**
 A pure function `find_disagreements()` that takes plain dicts and returns disagreements. No Django ORM inside, so it is trivially testable. Catches five disagreement types: missing in B, orphan in B, duplicate in B, value mismatch, unparseable value. Reconciliation runs against the **global** dataset (all orgs at once) so that cross-tenant `record_id` matches — where System A records a row under `ORG-A` but System B records the same row under `ORG-B` — are correctly resolved rather than silently dropped as `MISSING_IN_B`. Tenant isolation is enforced at query time in the API layer.
 
 **API**
-Four endpoints under `/api/`:
+Five endpoints under `/api/`:
 - `GET /api/disagreements/?org=ORG-A` — returns disagreements for one tenant, with optional `?reason=` filter and `?sort=` (prefix `-` for descending)
 - `GET /api/reasons/` — reason codes and display labels
 - `GET /api/orgs/` — list of org IDs for the UI selector
-- `GET /api/import-issues/` — the full import anomaly log
+- `GET /api/import-issues/` — the full import anomaly log (admin-style; not tenant-scoped — in production this would be restricted to privileged users)
+- `POST /api/reconcile/` — re-run reconciliation and return the disagreement count
 
 Tenant isolation: every disagreement query is filtered through `location__org_id`. An org-A user cannot see org-B rows even if they guess the URL.
 
 **Frontend**
-A single-page React app. Org selector (top-left), reason filter dropdown, sortable columns (Reason, Value A, Value B). Expandable import-issues log at the bottom. All inline styles — no CSS files, no external libraries beyond React itself.
+A single-page React app. Org selector, reason filter dropdown, sortable columns (Reason, Value A, Value B), expandable row details, and a collapsible import-issues panel. Styled with a single CSS file (`index.css`) — plain table layout, no component library.
 
 ---
 
@@ -95,8 +98,8 @@ A single-page React app. Org selector (top-left), reason filter dropdown, sortab
 
 - **Authentication.** The brief says skip it. The org parameter stands in for what would be a session claim in production.
 - **Pagination.** 120 rows × 2 systems = no need.
-- **Date / location disagreement detection.** The brief's minimum set is value, missing, orphan, duplicate. Date and location mismatches exist in the data but are not surfaced as disagreement types. They are visible as import issues.
-- **Re-running reconciliation from the UI.** A "Re-run Reconciliation" button is wired to a `POST /api/reconcile/` endpoint so the UI can trigger a fresh comparison without dropping to the terminal.
+- **Date / location disagreement detection.** The brief's minimum set is value, missing, orphan, duplicate. Date and location mismatches exist in the data (e.g. REC-1077 filed under different locations in A vs B) but are not surfaced as disagreement types when values agree.
+- **Tenant-scoped import issues.** The import-issues endpoint returns all orgs' anomalies for debugging; production would scope this to admin roles.
 - **Production deployment config.** No gunicorn, nginx, or Docker — not asked for.
 
 ---

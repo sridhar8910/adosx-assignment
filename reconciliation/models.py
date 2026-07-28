@@ -66,7 +66,7 @@ class SystemBEntry(models.Model):
         Location, on_delete=models.PROTECT, related_name='system_b_entries'
     )
     recorded_on = models.DateField(null=True, blank=True)
-    # value_raw: the original string before parsing (e.g. "1,25,400.00")
+    # value_raw: the original string before parsing (preserved even when parsed OK)
     value_raw = models.CharField(max_length=50, blank=True)
     value = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
     label = models.CharField(max_length=100, blank=True)

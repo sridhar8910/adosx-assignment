@@ -4,9 +4,9 @@ Core reconciliation logic.
 This module is deliberately free of Django ORM calls so find_disagreements()
 can be unit-tested with plain Python objects — no database required.
 
-The ORM bridge reconcile_from_db() pulls data in per-org batches (streaming,
-not all-at-once) so memory usage stays proportional to the largest single org,
-not the total dataset size.
+The ORM bridge reconcile_from_db() loads all records globally (streaming via
+.iterator()) so cross-tenant record_id matches resolve correctly. Tenant
+isolation is enforced when serving results through the API, not during comparison.
 
 Disagreement types detected
 ──────────────────────────
@@ -55,10 +55,9 @@ def find_disagreements(
     """
     Pure function: compare two lists of records and return disagreements.
 
-    Tenant isolation is the caller's responsibility — pass only the records
-    that belong to the scope you are authorised to inspect.
-    reconcile_from_db() calls this once per org so no cross-org data is ever
-    held in memory together.
+    reconcile_from_db() passes the full dataset so record_id matches work even
+    when System A and System B rows sit under different orgs (e.g. REC-1077).
+    Tenant isolation is enforced at API query time via location__org_id filtering.
     """
     results: list[DisagreementResult] = []
 
@@ -175,9 +174,9 @@ def reconcile_from_db() -> int:
     """
     Run reconciliation across all orgs, persist results atomically.
 
-    Memory model: we iterate org by org. Each org's records are loaded, compared,
-    and discarded before the next org is processed. Peak memory is proportional to
-    the largest single org, not the full dataset.
+    Loads all System A records and System B entries globally so cross-tenant
+    record_id matches resolve correctly. Results are stored with each row's
+    location; the API filters by org_id when serving tenants.
 
     The delete + bulk_create is wrapped in transaction.atomic() so a failure
     mid-write leaves the table in its previous state, not empty.
