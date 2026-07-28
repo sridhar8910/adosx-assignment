@@ -20,85 +20,88 @@ GET /api/reasons/
     Returns the list of valid reason codes and their display labels.
 """
 
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
 
 from .models import Disagreement, ImportIssue
 from .serializers import DisagreementSerializer, ImportIssueSerializer
 
 VALID_SORT_FIELDS = {
-    'value_a', '-value_a',
-    'value_b', '-value_b',
-    'record_id_a', '-record_id_a',
-    'reason', '-reason',
+    "value_a",
+    "-value_a",
+    "value_b",
+    "-value_b",
+    "record_id_a",
+    "-record_id_a",
+    "reason",
+    "-reason",
 }
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 def disagreements(request):
-    org_id = request.query_params.get('org', '').strip()
+    org_id = request.query_params.get("org", "").strip()
     if not org_id:
         return Response(
-            {'error': 'org query parameter is required (e.g. ?org=ORG-A)'},
+            {"error": "org query parameter is required (e.g. ?org=ORG-A)"},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     # Tenant isolation enforced here: filter by org through the Location FK
-    qs = Disagreement.objects.select_related('location').filter(
-        location__org_id=org_id
-    )
+    qs = Disagreement.objects.select_related("location").filter(location__org_id=org_id)
 
     # Optional reason filter
-    reason = request.query_params.get('reason', '').strip()
+    reason = request.query_params.get("reason", "").strip()
     if reason:
         qs = qs.filter(reason=reason)
 
     # Optional sort
-    sort = request.query_params.get('sort', 'reason').strip()
+    sort = request.query_params.get("sort", "reason").strip()
     if sort not in VALID_SORT_FIELDS:
-        sort = 'reason'
-    qs = qs.order_by(sort, 'record_id_a')
+        sort = "reason"
+    qs = qs.order_by(sort, "record_id_a")
 
     serializer = DisagreementSerializer(qs, many=True)
-    return Response({
-        'org_id': org_id,
-        'count': qs.count(),
-        'results': serializer.data,
-    })
+    return Response(
+        {
+            "org_id": org_id,
+            "count": qs.count(),
+            "results": serializer.data,
+        }
+    )
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 def import_issues(request):
-    qs = ImportIssue.objects.all().order_by('source_file', 'row_identifier')
+    qs = ImportIssue.objects.all().order_by("source_file", "row_identifier")
     serializer = ImportIssueSerializer(qs, many=True)
-    return Response({'count': qs.count(), 'results': serializer.data})
+    return Response({"count": qs.count(), "results": serializer.data})
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 def reasons(request):
-    return Response([
-        {'value': code, 'label': label}
-        for code, label in Disagreement.REASON_CHOICES
-    ])
+    return Response(
+        [{"value": code, "label": label} for code, label in Disagreement.REASON_CHOICES]
+    )
 
 
-@api_view(['GET'])
+@api_view(["GET"])
 def orgs(request):
     """Return the list of org IDs so the frontend can populate its selector."""
     from .models import Location
-    org_ids = list(
-        Location.objects.values_list('org_id', flat=True).distinct().order_by('org_id')
-    )
+
+    org_ids = list(Location.objects.values_list("org_id", flat=True).distinct().order_by("org_id"))
     return Response(org_ids)
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 def trigger_reconcile(request):
     """Run reconciliation comparison logic and return count of disagreements."""
     try:
         from .reconciler import reconcile_from_db
+
         count = reconcile_from_db()
-        return Response({'success': True, 'count': count})
+        return Response({"success": True, "count": count})
     except Exception as e:
-        return Response({'error': str(e)}, status=500)
+        return Response({"error": str(e)}, status=500)

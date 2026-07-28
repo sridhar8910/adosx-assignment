@@ -4,23 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('reconciliation', '0001_initial'),
+        ("reconciliation", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='disagreement',
-            name='entry_id_b',
+            model_name="disagreement",
+            name="entry_id_b",
             field=models.CharField(blank=True, max_length=200),
         ),
         migrations.AddIndex(
-            model_name='disagreement',
-            index=models.Index(fields=['location', 'reason'], name='reconciliat_locatio_9f8aad_idx'),
+            model_name="disagreement",
+            index=models.Index(
+                fields=["location", "reason"], name="reconciliat_locatio_9f8aad_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='disagreement',
-            index=models.Index(fields=['record_id_a'], name='reconciliat_record__4e659c_idx'),
+            model_name="disagreement",
+            index=models.Index(fields=["record_id_a"], name="reconciliat_record__4e659c_idx"),
         ),
     ]

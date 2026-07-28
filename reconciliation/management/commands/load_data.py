@@ -99,7 +99,11 @@ def _parse_decimal(
         return Decimal(cleaned), True
     except InvalidOperation:
         _log(
-            issues, source, row_id, field, raw,
+            issues,
+            source,
+            row_id,
+            field,
+            raw,
             f"Cannot parse '{raw}' as a number — stored as NULL",
             "WARNING",
         )
@@ -121,7 +125,11 @@ def _parse_date(
         return date.fromisoformat(stripped)
     except ValueError:
         _log(
-            issues, source, row_id, field, raw,
+            issues,
+            source,
+            row_id,
+            field,
+            raw,
             f"Cannot parse '{raw}' as a date — stored as NULL",
             "WARNING",
         )
@@ -170,7 +178,9 @@ def _truncate_all() -> None:
                 RESTART IDENTITY CASCADE;
             """)
     else:
-        logger.info("Clearing all reconciliation tables (DELETE fallback for %s)", connection.vendor)
+        logger.info(
+            "Clearing all reconciliation tables (DELETE fallback for %s)", connection.vendor
+        )
         Disagreement.objects.all().delete()
         ImportIssue.objects.all().delete()
         SystemBEntry.objects.all().delete()
@@ -200,8 +210,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             self._load_locations(dataset_dir, issues)
             location_map: dict[str, int] = {
-                loc.location_id: loc.pk
-                for loc in Location.objects.only("id", "location_id")
+                loc.location_id: loc.pk for loc in Location.objects.only("id", "location_id")
             }
 
             self._load_system_a(dataset_dir, location_map, issues)
@@ -230,9 +239,13 @@ class Command(BaseCommand):
                 name = row["location_name"].strip()
                 if not loc_id or not org_id:
                     _log(
-                        issues, "locations.csv", loc_id or "(blank)",
-                        "location_id/org_id", str(row),
-                        "Row missing location_id or org_id — skipped", "ERROR",
+                        issues,
+                        "locations.csv",
+                        loc_id or "(blank)",
+                        "location_id/org_id",
+                        str(row),
+                        "Row missing location_id or org_id — skipped",
+                        "ERROR",
                     )
                     continue
                 Location.objects.create(location_id=loc_id, org_id=org_id, location_name=name)
@@ -260,15 +273,29 @@ class Command(BaseCommand):
             for row in csv.DictReader(f):
                 rec_id = row["record_id"].strip()
                 if not rec_id:
-                    _log(issues, "system_a.csv", "(blank)", "record_id",
-                         str(row), "Row has no record_id — skipped", "ERROR")
+                    _log(
+                        issues,
+                        "system_a.csv",
+                        "(blank)",
+                        "record_id",
+                        str(row),
+                        "Row has no record_id — skipped",
+                        "ERROR",
+                    )
                     continue
 
                 loc_id = row["location_id"].strip()
                 location_pk = location_map.get(loc_id)
                 if location_pk is None:
-                    _log(issues, "system_a.csv", rec_id, "location_id", loc_id,
-                         f"Unknown location_id '{loc_id}' — skipped", "ERROR")
+                    _log(
+                        issues,
+                        "system_a.csv",
+                        rec_id,
+                        "location_id",
+                        loc_id,
+                        f"Unknown location_id '{loc_id}' — skipped",
+                        "ERROR",
+                    )
                     continue
 
                 event_date = _parse_date(
@@ -285,8 +312,15 @@ class Command(BaseCommand):
                 )
 
                 known_keys: set[str] = {
-                    "record_id", "location_id", "event_date", "category_code",
-                    "actor_id", "base_value", "adjustment", "total_value", "state",
+                    "record_id",
+                    "location_id",
+                    "event_date",
+                    "category_code",
+                    "actor_id",
+                    "base_value",
+                    "adjustment",
+                    "total_value",
+                    "state",
                 }
                 extra_data = {
                     k: v.strip() if isinstance(v, str) else v
@@ -294,18 +328,20 @@ class Command(BaseCommand):
                     if k not in known_keys and k is not None
                 }
 
-                batch.append(SystemARecord(
-                    record_id=rec_id,
-                    location_id=location_pk,
-                    event_date=event_date,
-                    category_code=row.get("category_code", "").strip(),
-                    actor_id=row.get("actor_id", "").strip(),
-                    base_value=base_value,
-                    adjustment=adjustment,
-                    total_value=total_value,
-                    state=row.get("state", "").strip(),
-                    extra_data=extra_data,
-                ))
+                batch.append(
+                    SystemARecord(
+                        record_id=rec_id,
+                        location_id=location_pk,
+                        event_date=event_date,
+                        category_code=row.get("category_code", "").strip(),
+                        actor_id=row.get("actor_id", "").strip(),
+                        base_value=base_value,
+                        adjustment=adjustment,
+                        total_value=total_value,
+                        state=row.get("state", "").strip(),
+                        extra_data=extra_data,
+                    )
+                )
 
                 if len(batch) >= 2000:
                     flush()
@@ -337,15 +373,29 @@ class Command(BaseCommand):
             for row in csv.DictReader(f):
                 entry_id = row["entry_id"].strip()
                 if not entry_id:
-                    _log(issues, "system_b.csv", "(blank)", "entry_id",
-                         str(row), "Row has no entry_id — skipped", "ERROR")
+                    _log(
+                        issues,
+                        "system_b.csv",
+                        "(blank)",
+                        "entry_id",
+                        str(row),
+                        "Row has no entry_id — skipped",
+                        "ERROR",
+                    )
                     continue
 
                 loc_id = row["location_id"].strip()
                 location_pk = location_map.get(loc_id)
                 if location_pk is None:
-                    _log(issues, "system_b.csv", entry_id, "location_id", loc_id,
-                         f"Unknown location_id '{loc_id}' — skipped", "ERROR")
+                    _log(
+                        issues,
+                        "system_b.csv",
+                        entry_id,
+                        "location_id",
+                        loc_id,
+                        f"Unknown location_id '{loc_id}' — skipped",
+                        "ERROR",
+                    )
                     continue
 
                 raw_ref = row.get("record_ref", "").strip()
@@ -353,13 +403,24 @@ class Command(BaseCommand):
                 record_a_pk: int | None = None
 
                 if not canonical_ref:
-                    _log(issues, "system_b.csv", entry_id, "record_ref", raw_ref,
-                         f"Cannot normalise record_ref '{raw_ref}' — FK will be NULL", "WARNING")
+                    _log(
+                        issues,
+                        "system_b.csv",
+                        entry_id,
+                        "record_ref",
+                        raw_ref,
+                        f"Cannot normalise record_ref '{raw_ref}' — FK will be NULL",
+                        "WARNING",
+                    )
                 else:
                     record_a_pk = record_a_id_map.get(canonical_ref)
                     if record_a_pk is None:
                         _log(
-                            issues, "system_b.csv", entry_id, "record_ref", raw_ref,
+                            issues,
+                            "system_b.csv",
+                            entry_id,
+                            "record_ref",
+                            raw_ref,
                             f"record_ref '{raw_ref}' (normalised: '{canonical_ref}') "
                             f"does not match any System A record — FK will be NULL",
                             "WARNING",
@@ -367,21 +428,28 @@ class Command(BaseCommand):
 
                 if canonical_ref and canonical_ref != raw_ref:
                     _log(
-                        issues, "system_b.csv", entry_id, "record_ref", raw_ref,
+                        issues,
+                        "system_b.csv",
+                        entry_id,
+                        "record_ref",
+                        raw_ref,
                         f"Dirty record_ref '{raw_ref}' normalised to '{canonical_ref}'",
                         "INFO",
                     )
 
                 value_raw = row.get("value", "").strip()
-                value, _ = _parse_decimal(
-                    value_raw, "system_b.csv", entry_id, "value", issues
-                )
+                value, _ = _parse_decimal(value_raw, "system_b.csv", entry_id, "value", issues)
                 recorded_on = _parse_date(
                     row.get("recorded_on", ""), "system_b.csv", entry_id, "recorded_on", issues
                 )
 
                 known_keys_b: set[str] = {
-                    "entry_id", "record_ref", "location_id", "recorded_on", "value", "label",
+                    "entry_id",
+                    "record_ref",
+                    "location_id",
+                    "recorded_on",
+                    "value",
+                    "label",
                 }
                 extra_data = {
                     k: v.strip() if isinstance(v, str) else v
@@ -389,17 +457,19 @@ class Command(BaseCommand):
                     if k not in known_keys_b and k is not None
                 }
 
-                batch.append(SystemBEntry(
-                    entry_id=entry_id,
-                    record_ref_raw=raw_ref,
-                    record_ref_id=record_a_pk,
-                    location_id=location_pk,
-                    recorded_on=recorded_on,
-                    value_raw=value_raw,
-                    value=value,
-                    label=row.get("label", "").strip(),
-                    extra_data=extra_data,
-                ))
+                batch.append(
+                    SystemBEntry(
+                        entry_id=entry_id,
+                        record_ref_raw=raw_ref,
+                        record_ref_id=record_a_pk,
+                        location_id=location_pk,
+                        recorded_on=recorded_on,
+                        value_raw=value_raw,
+                        value=value,
+                        label=row.get("label", "").strip(),
+                        extra_data=extra_data,
+                    )
+                )
 
                 if len(batch) >= 2000:
                     flush()

@@ -15,7 +15,6 @@ Usage (handled internally by find_disagreements in reconciler.py):
 from __future__ import annotations
 
 import abc
-from decimal import Decimal
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -40,6 +39,7 @@ class ReconciliationRule(abc.ABC):
 
 # ── Concrete rules ────────────────────────────────────────────────────────────
 
+
 class MissingInBRule(ReconciliationRule):
     """A System A record that has no corresponding System B entry at all."""
 
@@ -51,20 +51,22 @@ class MissingInBRule(ReconciliationRule):
     ) -> None:
         if not matched_entries:
             from reconciliation.reconciler import DisagreementResult as DR
-            results.append(DR(
-                reason="MISSING_IN_B",
-                record_id_a=record["record_id"],
-                entry_id_b="",
-                record_ref_raw="",
-                location_id=record["location_id"],
-                value_a=record["total_value"],
-                value_b=None,
-                value_b_raw="",
-                detail=(
-                    f"{record['record_id']} exists in System A "
-                    "but has no entry in System B"
-                ),
-            ))
+
+            results.append(
+                DR(
+                    reason="MISSING_IN_B",
+                    record_id_a=record["record_id"],
+                    entry_id_b="",
+                    record_ref_raw="",
+                    location_id=record["location_id"],
+                    value_a=record["total_value"],
+                    value_b=None,
+                    value_b_raw="",
+                    detail=(
+                        f"{record['record_id']} exists in System A but has no entry in System B"
+                    ),
+                )
+            )
 
 
 class DuplicateInBRule(ReconciliationRule):
@@ -78,21 +80,24 @@ class DuplicateInBRule(ReconciliationRule):
     ) -> None:
         if len(matched_entries) > 1:
             from reconciliation.reconciler import DisagreementResult as DR
+
             entry_ids = ", ".join(e["entry_id"] for e in matched_entries)
-            results.append(DR(
-                reason="DUPLICATE_IN_B",
-                record_id_a=record["record_id"],
-                entry_id_b=entry_ids,
-                record_ref_raw=matched_entries[0]["record_ref_raw"],
-                location_id=record["location_id"],
-                value_a=record["total_value"],
-                value_b=None,
-                value_b_raw="",
-                detail=(
-                    f"{record['record_id']} has {len(matched_entries)} "
-                    f"entries in System B: {entry_ids}"
-                ),
-            ))
+            results.append(
+                DR(
+                    reason="DUPLICATE_IN_B",
+                    record_id_a=record["record_id"],
+                    entry_id_b=entry_ids,
+                    record_ref_raw=matched_entries[0]["record_ref_raw"],
+                    location_id=record["location_id"],
+                    value_a=record["total_value"],
+                    value_b=None,
+                    value_b_raw="",
+                    detail=(
+                        f"{record['record_id']} has {len(matched_entries)} "
+                        f"entries in System B: {entry_ids}"
+                    ),
+                )
+            )
 
 
 class ValueMismatchRule(ReconciliationRule):
@@ -109,27 +114,27 @@ class ValueMismatchRule(ReconciliationRule):
         results: list[DisagreementResult],
     ) -> None:
         from reconciliation.reconciler import DisagreementResult as DR
+
         for entry in matched_entries:
             if entry["value"] is None:
                 continue  # handled by UnparseableValueRule
-            if (
-                record["total_value"] is not None
-                and entry["value"] != record["total_value"]
-            ):
-                results.append(DR(
-                    reason="VALUE_MISMATCH",
-                    record_id_a=record["record_id"],
-                    entry_id_b=entry["entry_id"],
-                    record_ref_raw=entry["record_ref_raw"],
-                    location_id=record["location_id"],
-                    value_a=record["total_value"],
-                    value_b=entry["value"],
-                    value_b_raw=entry["value_raw"],
-                    detail=(
-                        f"System A total_value={record['total_value']}, "
-                        f"System B value={entry['value']}"
-                    ),
-                ))
+            if record["total_value"] is not None and entry["value"] != record["total_value"]:
+                results.append(
+                    DR(
+                        reason="VALUE_MISMATCH",
+                        record_id_a=record["record_id"],
+                        entry_id_b=entry["entry_id"],
+                        record_ref_raw=entry["record_ref_raw"],
+                        location_id=record["location_id"],
+                        value_a=record["total_value"],
+                        value_b=entry["value"],
+                        value_b_raw=entry["value_raw"],
+                        detail=(
+                            f"System A total_value={record['total_value']}, "
+                            f"System B value={entry['value']}"
+                        ),
+                    )
+                )
 
 
 class UnparseableValueRule(ReconciliationRule):
@@ -142,25 +147,29 @@ class UnparseableValueRule(ReconciliationRule):
         results: list[DisagreementResult],
     ) -> None:
         from reconciliation.reconciler import DisagreementResult as DR
+
         for entry in matched_entries:
             if entry["value"] is None:
-                results.append(DR(
-                    reason="UNPARSEABLE_VALUE",
-                    record_id_a=record["record_id"],
-                    entry_id_b=entry["entry_id"],
-                    record_ref_raw=entry["record_ref_raw"],
-                    location_id=record["location_id"],
-                    value_a=record["total_value"],
-                    value_b=None,
-                    value_b_raw=entry["value_raw"],
-                    detail=(
-                        f"System B entry {entry['entry_id']} has "
-                        f"unparseable value '{entry['value_raw']}'"
-                    ),
-                ))
+                results.append(
+                    DR(
+                        reason="UNPARSEABLE_VALUE",
+                        record_id_a=record["record_id"],
+                        entry_id_b=entry["entry_id"],
+                        record_ref_raw=entry["record_ref_raw"],
+                        location_id=record["location_id"],
+                        value_a=record["total_value"],
+                        value_b=None,
+                        value_b_raw=entry["value_raw"],
+                        detail=(
+                            f"System B entry {entry['entry_id']} has "
+                            f"unparseable value '{entry['value_raw']}'"
+                        ),
+                    )
+                )
 
 
 # ── Engine ────────────────────────────────────────────────────────────────────
+
 
 class RuleEngine:
     """
@@ -206,19 +215,21 @@ class RuleEngine:
 
         # Orphan B entries — one ORPHAN_IN_B per unresolved entry
         for entry in orphans:
-            results.append(DR(
-                reason="ORPHAN_IN_B",
-                record_id_a="",
-                entry_id_b=entry["entry_id"],
-                record_ref_raw=entry["record_ref_raw"],
-                location_id=entry["location_id"],
-                value_a=None,
-                value_b=entry["value"],
-                value_b_raw=entry["value_raw"],
-                detail=(
-                    f"System B entry {entry['entry_id']} references "
-                    f"'{entry['record_ref_raw']}' which does not exist in System A"
-                ),
-            ))
+            results.append(
+                DR(
+                    reason="ORPHAN_IN_B",
+                    record_id_a="",
+                    entry_id_b=entry["entry_id"],
+                    record_ref_raw=entry["record_ref_raw"],
+                    location_id=entry["location_id"],
+                    value_a=None,
+                    value_b=entry["value"],
+                    value_b_raw=entry["value_raw"],
+                    detail=(
+                        f"System B entry {entry['entry_id']} references "
+                        f"'{entry['record_ref_raw']}' which does not exist in System A"
+                    ),
+                )
+            )
 
         return results

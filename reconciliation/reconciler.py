@@ -38,7 +38,7 @@ class EntryB(TypedDict):
     record_ref_raw: str
     resolved_record_id: str | None  # None = ref could not be resolved
     location_id: str
-    value: Decimal | None           # None = unparseable
+    value: Decimal | None  # None = unparseable
     value_raw: str
 
 
@@ -67,10 +67,12 @@ def find_disagreements(
     Tenant isolation is enforced at API query time.
     """
     from reconciliation.rules import RuleEngine
+
     return RuleEngine().run(records_a, entries_b)
 
 
 # ── ORM bridge ───────────────────────────────────────────────────────────────
+
 
 def reconcile_from_db() -> int:
     """
@@ -135,22 +137,17 @@ def reconcile_from_db() -> int:
 
     all_disagreements = find_disagreements(records_a, entries_b)
 
-    logger.info(
-        "reconcile_from_db: found %d disagreements, persisting", len(all_disagreements)
-    )
+    logger.info("reconcile_from_db: found %d disagreements, persisting", len(all_disagreements))
 
     # Build FK lookup maps — only PKs needed, not full objects
     location_pk_map: dict[str, int] = {
-        r["location_id"]: r["id"]
-        for r in Location.objects.values("id", "location_id").iterator()
+        r["location_id"]: r["id"] for r in Location.objects.values("id", "location_id").iterator()
     }
     record_a_pk_map: dict[str, int] = {
-        r["record_id"]: r["id"]
-        for r in SystemARecord.objects.values("id", "record_id").iterator()
+        r["record_id"]: r["id"] for r in SystemARecord.objects.values("id", "record_id").iterator()
     }
     entry_b_pk_map: dict[str, int] = {
-        e["entry_id"]: e["id"]
-        for e in SystemBEntry.objects.values("id", "entry_id").iterator()
+        e["entry_id"]: e["id"] for e in SystemBEntry.objects.values("id", "entry_id").iterator()
     }
 
     to_create = []

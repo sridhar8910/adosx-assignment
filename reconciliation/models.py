@@ -35,7 +35,7 @@ class Location(models.Model):
 class SystemARecord(models.Model):
     record_id = models.CharField(max_length=30, unique=True)
     location = models.ForeignKey(
-        Location, on_delete=models.PROTECT, related_name='system_a_records'
+        Location, on_delete=models.PROTECT, related_name="system_a_records"
     )
     event_date = models.DateField(null=True, blank=True)
     category_code = models.CharField(max_length=20, blank=True)
@@ -60,10 +60,10 @@ class SystemBEntry(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='system_b_entries',
+        related_name="system_b_entries",
     )
     location = models.ForeignKey(
-        Location, on_delete=models.PROTECT, related_name='system_b_entries'
+        Location, on_delete=models.PROTECT, related_name="system_b_entries"
     )
     recorded_on = models.DateField(null=True, blank=True)
     # value_raw: the original string before parsing (preserved even when parsed OK)
@@ -81,13 +81,14 @@ class ImportIssue(models.Model):
     Every anomaly encountered during import is logged here.
     Nothing is silently dropped.
     """
-    SEVERITY_INFO = 'INFO'
-    SEVERITY_WARNING = 'WARNING'
-    SEVERITY_ERROR = 'ERROR'
+
+    SEVERITY_INFO = "INFO"
+    SEVERITY_WARNING = "WARNING"
+    SEVERITY_ERROR = "ERROR"
     SEVERITY_CHOICES = [
-        (SEVERITY_INFO, 'Info'),
-        (SEVERITY_WARNING, 'Warning'),
-        (SEVERITY_ERROR, 'Error'),
+        (SEVERITY_INFO, "Info"),
+        (SEVERITY_WARNING, "Warning"),
+        (SEVERITY_ERROR, "Error"),
     ]
 
     source_file = models.CharField(max_length=50)
@@ -107,32 +108,33 @@ class Disagreement(models.Model):
     One row per disagreement found by the reconciliation engine.
     Re-created on each reconciliation run (truncate + insert).
     """
-    REASON_MISSING_IN_B = 'MISSING_IN_B'
-    REASON_ORPHAN_IN_B = 'ORPHAN_IN_B'
-    REASON_DUPLICATE_IN_B = 'DUPLICATE_IN_B'
-    REASON_VALUE_MISMATCH = 'VALUE_MISMATCH'
-    REASON_UNPARSEABLE_VALUE = 'UNPARSEABLE_VALUE'
+
+    REASON_MISSING_IN_B = "MISSING_IN_B"
+    REASON_ORPHAN_IN_B = "ORPHAN_IN_B"
+    REASON_DUPLICATE_IN_B = "DUPLICATE_IN_B"
+    REASON_VALUE_MISMATCH = "VALUE_MISMATCH"
+    REASON_UNPARSEABLE_VALUE = "UNPARSEABLE_VALUE"
 
     REASON_CHOICES = [
-        (REASON_MISSING_IN_B, 'Missing in System B'),
-        (REASON_ORPHAN_IN_B, 'Orphan in System B (no matching System A record)'),
-        (REASON_DUPLICATE_IN_B, 'Duplicate in System B'),
-        (REASON_VALUE_MISMATCH, 'Value mismatch between systems'),
-        (REASON_UNPARSEABLE_VALUE, 'System B value could not be parsed'),
+        (REASON_MISSING_IN_B, "Missing in System B"),
+        (REASON_ORPHAN_IN_B, "Orphan in System B (no matching System A record)"),
+        (REASON_DUPLICATE_IN_B, "Duplicate in System B"),
+        (REASON_VALUE_MISMATCH, "Value mismatch between systems"),
+        (REASON_UNPARSEABLE_VALUE, "System B value could not be parsed"),
     ]
 
     reason = models.CharField(max_length=30, choices=REASON_CHOICES, db_index=True)
 
     # The System A record involved (null for orphan-in-B cases)
     record_a = models.ForeignKey(
-        SystemARecord, on_delete=models.CASCADE, null=True, blank=True, related_name='+'
+        SystemARecord, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
     )
     # The System B entry involved (null for missing-in-B cases)
     entry_b = models.ForeignKey(
-        SystemBEntry, on_delete=models.CASCADE, null=True, blank=True, related_name='+'
+        SystemBEntry, on_delete=models.CASCADE, null=True, blank=True, related_name="+"
     )
 
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='+')
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name="+")
 
     # Snapshot values at the time of reconciliation for display
     value_a = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
@@ -149,12 +151,12 @@ class Disagreement(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['reason', 'record_id_a']
+        ordering = ["reason", "record_id_a"]
         indexes = [
             # Primary query pattern: filter by org (via location) and reason
-            models.Index(fields=['location', 'reason']),
+            models.Index(fields=["location", "reason"]),
             # Sort / lookup by record_id_a
-            models.Index(fields=['record_id_a']),
+            models.Index(fields=["record_id_a"]),
         ]
 
     def __str__(self):

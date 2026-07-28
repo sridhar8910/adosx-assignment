@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Location, SystemARecord, SystemBEntry, ImportIssue, Disagreement
+
+from .models import Disagreement, ImportIssue, Location, SystemARecord, SystemBEntry
 
 admin.site.register(Location)
 admin.site.register(SystemARecord)

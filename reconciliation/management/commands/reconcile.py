@@ -27,6 +27,4 @@ class Command(BaseCommand):
         count = reconcile_from_db()
         logger.info("reconcile command complete: %d disagreement(s) written", count)
         # Also write to stdout so the terminal shows something when run manually
-        self.stdout.write(
-            self.style.SUCCESS(f"Done. Found {count} disagreement(s).")
-        )
+        self.stdout.write(self.style.SUCCESS(f"Done. Found {count} disagreement(s)."))
