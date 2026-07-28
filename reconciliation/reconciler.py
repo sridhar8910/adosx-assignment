@@ -189,45 +189,39 @@ def reconcile_from_db() -> int:
 
     all_disagreements: list[DisagreementResult] = []
 
-    org_ids = list(
-        Location.objects.values_list('org_id', flat=True).distinct().order_by('org_id')
-    )
+    # Stream global querysets across all orgs so cross-tenant record matches (e.g. REC-1077)
+    # are properly resolved during comparison. Tenant isolation is enforced at API query-time.
+    records_a: list[RecordA] = [
+        RecordA(
+            record_id=r['record_id'],
+            location_id=r['location__location_id'],
+            total_value=r['total_value'],
+        )
+        for r in SystemARecord.objects
+            .values('record_id', 'location__location_id', 'total_value')
+            .iterator()
+    ]
 
-    for org_id in org_ids:
-        # Stream each queryset — .iterator() prevents Django from caching rows
-        records_a: list[RecordA] = [
-            RecordA(
-                record_id=r['record_id'],
-                location_id=r['location__location_id'],
-                total_value=r['total_value'],
+    entries_b: list[EntryB] = [
+        EntryB(
+            entry_id=e['entry_id'],
+            record_ref_raw=e['record_ref_raw'],
+            resolved_record_id=e['record_ref__record_id'],  # None if FK is null
+            location_id=e['location__location_id'],
+            value=e['value'],
+            value_raw=e['value_raw'],
+        )
+        for e in SystemBEntry.objects
+            .values(
+                'entry_id', 'record_ref_raw',
+                'record_ref__record_id',
+                'location__location_id',
+                'value', 'value_raw',
             )
-            for r in SystemARecord.objects
-                .filter(location__org_id=org_id)
-                .values('record_id', 'location__location_id', 'total_value')
-                .iterator()
-        ]
+            .iterator()
+    ]
 
-        entries_b: list[EntryB] = [
-            EntryB(
-                entry_id=e['entry_id'],
-                record_ref_raw=e['record_ref_raw'],
-                resolved_record_id=e['record_ref__record_id'],  # None if FK is null
-                location_id=e['location__location_id'],
-                value=e['value'],
-                value_raw=e['value_raw'],
-            )
-            for e in SystemBEntry.objects
-                .filter(location__org_id=org_id)
-                .values(
-                    'entry_id', 'record_ref_raw',
-                    'record_ref__record_id',
-                    'location__location_id',
-                    'value', 'value_raw',
-                )
-                .iterator()
-        ]
-
-        all_disagreements.extend(find_disagreements(records_a, entries_b))
+    all_disagreements = find_disagreements(records_a, entries_b)
 
     # Build FK lookup maps — only PKs needed, not full objects
     location_pk_map: dict[str, int] = {
