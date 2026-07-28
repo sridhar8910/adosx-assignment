@@ -89,7 +89,13 @@ Five endpoints under `/api/`:
 Tenant isolation: every disagreement query is filtered through `location__org_id`. An org-A user cannot see org-B rows even if they guess the URL.
 
 **Frontend**
-A single-page React app. Org selector, reason filter dropdown, sortable columns (Reason, Value A, Value B), expandable row details, and a collapsible import-issues panel. Styled with a single CSS file (`index.css`) — plain table layout, no component library.
+A single-page React app designed as an **Observability Control Room Split-Pane Workspace** (inspired by tools like Sentry and Datadog). Features:
+- **Workspace Navigation Bar:** Segmented controls to toggle between Overview Dashboard, Split-View Explorer, Visual Topology, Audit Logs, and Operations Logs.
+- **Observability Control Sidebar:** Holds the global re-run reconciler action panel, dynamic tenant org scopes, and live find queries.
+- **Split-View Explorer:** Left-hand scrolling discrepancy card stream with right-hand sticky comparison panel showing raw system deltas, location scopes, audit trace messages, and formatted JSON dynamic fields.
+- **Visual Topology Diagram:** Interactive SVG displaying data flows from System A locations to the central Reconciler Core and System B entry points. Clicking LOC nodes quick-filters location lists.
+- **Logs Console:** Simulated terminal buffer showing real-time execution steps and status logs during a reconciliation run.
+- Single styling stylesheet (`index.css`) with zero third-party component libraries.
 
 ---
 

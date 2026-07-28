@@ -422,3 +422,512 @@ tr.expanded-row {
 .import-issues-log {
   margin-top: 16px;
 }
+
+/* --- Redesigned Premium Workspace Nav & Dashboard Styles --- */
+
+.workspace-nav {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.nav-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px 8px 0 0;
+}
+
+.nav-tab.active {
+  color: var(--primary-accent);
+  border-bottom-color: var(--primary-accent);
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 8px 8px 0 0;
+}
+
+/* Search bar styling */
+.search-input-wrapper {
+  position: relative;
+  flex-grow: 1;
+  max-width: 400px;
+}
+
+.search-input-wrapper svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.search-input {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  padding: 10px 16px 10px 40px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Dashboard Widget Cards */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.chart-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.donut-chart-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 24px;
+  padding: 12px 0;
+}
+
+.donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-grow: 1;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.legend-color-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.legend-label-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Custom Progress Bar Chart */
+.bar-chart-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.bar-chart-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.bar-track {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Severity filter badge pills */
+.badge-pill-group {
+  display: flex;
+  gap: 8px;
+}
+
+.badge-pill {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.badge-pill:hover {
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.badge-pill.active {
+  background: var(--primary-gradient);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);
+}
+
+/* Terminal Console styling */
+.console-box {
+  background: #060913;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  padding: 20px;
+  color: #38bdf8;
+  font-size: 13px;
+  line-height: 1.6;
+  max-height: 400px;
+  overflow-y: auto;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);
+}
+
+.console-line {
+  margin-bottom: 6px;
+  display: flex;
+  gap: 12px;
+}
+
+.console-timestamp {
+  color: #64748b;
+  user-select: none;
+}
+
+.console-success {
+  color: #4ade80;
+}
+
+.console-warn {
+  color: #fbbf24;
+}
+
+.console-info {
+  color: #a78bfa;
+}
+
+.console-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 15px;
+  background: #38bdf8;
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+@keyframes blink {
+  from, to { background-color: transparent }
+  50% { background-color: #38bdf8 }
+}
+
+.console-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  padding: 10px 16px;
+}
+
+.console-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* ==========================================================================
+   15+ Years UI/UX Designer Refinement: Observability Control Room Layout
+   ========================================================================== */
+
+/* Main layout grid: Sidebar + Content Canvas */
+.recon-workspace-wrapper {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .recon-workspace-wrapper {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recon-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 40px;
+}
+
+.recon-content-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 700px;
+}
+
+/* Modern Segmented Control for Tabs */
+.recon-tab-group {
+  display: inline-flex;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  padding: 4px;
+  width: fit-content;
+}
+
+.recon-tab-button {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recon-tab-button:hover {
+  color: var(--text-primary);
+}
+
+.recon-tab-button.active {
+  background: var(--bg-secondary);
+  color: var(--primary-accent);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Split Pane Grid (IDE-Style Master/Detail) */
+.recon-split-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 20px;
+  min-height: 580px;
+}
+
+@media (max-width: 950px) {
+  .recon-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recon-split-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbar for list */
+.recon-split-list::-webkit-scrollbar,
+.json-view::-webkit-scrollbar,
+.console-box::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.recon-split-list::-webkit-scrollbar-track,
+.json-view::-webkit-scrollbar-track,
+.console-box::-webkit-scrollbar-track {
+  background: transparent;
+}
+.recon-split-list::-webkit-scrollbar-thumb,
+.json-view::-webkit-scrollbar-thumb,
+.console-box::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.recon-split-list::-webkit-scrollbar-thumb:hover,
+.json-view::-webkit-scrollbar-thumb:hover,
+.console-box::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.recon-split-inspector {
+  position: sticky;
+  top: 40px;
+  max-height: 600px;
+  overflow-y: auto;
+  border-left: 3px solid var(--primary-accent);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glow Border & Hover Effects */
+.recon-card-interactive {
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.recon-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.1);
+}
+
+.recon-card-interactive.active {
+  border-color: var(--primary-accent);
+  background: rgba(59, 130, 246, 0.04);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+}
+
+/* SVG Interactive Topology Diagram styling */
+.topo-svg-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 1px solid var(--border-glass);
+  padding: 24px;
+  min-height: 500px;
+}
+
+.topo-node {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.topo-node circle {
+  transition: all 0.3s ease;
+}
+
+.topo-node:hover circle {
+  fill: var(--primary-accent);
+  filter: drop-shadow(0px 0px 8px rgba(59, 130, 246, 0.8));
+}
+
+.topo-node.active circle {
+  fill: #8b5cf6;
+  stroke: #ffffff;
+  stroke-width: 2px;
+  filter: drop-shadow(0px 0px 12px rgba(139, 92, 246, 0.8));
+}
+
+.topo-node text {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--text-primary);
+  user-select: none;
+}
+
+.topo-edge {
+  stroke-dasharray: 4;
+  animation: dash 20s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+.pulsing-engine {
+  animation: glow-pulse 2s infinite ease-in-out;
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0px 0px 4px rgba(59, 130, 246, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0px 0px 16px rgba(59, 130, 246, 0.9));
+  }
+}
+
+/* Control details styling inside sidebar */
+.sidebar-status-box {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-status-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-secondary);
+}
+
+.sidebar-status-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
