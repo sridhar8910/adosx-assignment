@@ -16,7 +16,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
                 ("source_file", models.CharField(max_length=50)),
@@ -27,7 +30,11 @@ class Migration(migrations.Migration):
                 (
                     "severity",
                     models.CharField(
-                        choices=[("INFO", "Info"), ("WARNING", "Warning"), ("ERROR", "Error")],
+                        choices=[
+                            ("INFO", "Info"),
+                            ("WARNING", "Warning"),
+                            ("ERROR", "Error"),
+                        ],
                         default="WARNING",
                         max_length=10,
                     ),
@@ -41,7 +48,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
                 ("location_id", models.CharField(max_length=20, unique=True)),
@@ -55,7 +65,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
                 ("record_id", models.CharField(max_length=30, unique=True)),
@@ -91,7 +104,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
                 ("entry_id", models.CharField(max_length=30, unique=True)),
@@ -129,7 +145,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
                 (
@@ -137,7 +156,10 @@ class Migration(migrations.Migration):
                     models.CharField(
                         choices=[
                             ("MISSING_IN_B", "Missing in System B"),
-                            ("ORPHAN_IN_B", "Orphan in System B (no matching System A record)"),
+                            (
+                                "ORPHAN_IN_B",
+                                "Orphan in System B (no matching System A record)",
+                            ),
                             ("DUPLICATE_IN_B", "Duplicate in System B"),
                             ("VALUE_MISMATCH", "Value mismatch between systems"),
                             ("UNPARSEABLE_VALUE", "System B value could not be parsed"),

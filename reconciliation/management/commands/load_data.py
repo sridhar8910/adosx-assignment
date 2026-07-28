@@ -179,7 +179,8 @@ def _truncate_all() -> None:
             """)
     else:
         logger.info(
-            "Clearing all reconciliation tables (DELETE fallback for %s)", connection.vendor
+            "Clearing all reconciliation tables (DELETE fallback for %s)",
+            connection.vendor,
         )
         Disagreement.objects.all().delete()
         ImportIssue.objects.all().delete()
@@ -298,16 +299,32 @@ class Command(BaseCommand):
                     continue
 
                 event_date = _parse_date(
-                    row.get("event_date", ""), "system_a.csv", rec_id, "event_date", issues
+                    row.get("event_date", ""),
+                    "system_a.csv",
+                    rec_id,
+                    "event_date",
+                    issues,
                 )
                 base_value, _ = _parse_decimal(
-                    row.get("base_value", ""), "system_a.csv", rec_id, "base_value", issues
+                    row.get("base_value", ""),
+                    "system_a.csv",
+                    rec_id,
+                    "base_value",
+                    issues,
                 )
                 adjustment, _ = _parse_decimal(
-                    row.get("adjustment", ""), "system_a.csv", rec_id, "adjustment", issues
+                    row.get("adjustment", ""),
+                    "system_a.csv",
+                    rec_id,
+                    "adjustment",
+                    issues,
                 )
                 total_value, _ = _parse_decimal(
-                    row.get("total_value", ""), "system_a.csv", rec_id, "total_value", issues
+                    row.get("total_value", ""),
+                    "system_a.csv",
+                    rec_id,
+                    "total_value",
+                    issues,
                 )
 
                 known_keys: set[str] = {
@@ -439,7 +456,11 @@ class Command(BaseCommand):
                 value_raw = row.get("value", "").strip()
                 value, _ = _parse_decimal(value_raw, "system_b.csv", entry_id, "value", issues)
                 recorded_on = _parse_date(
-                    row.get("recorded_on", ""), "system_b.csv", entry_id, "recorded_on", issues
+                    row.get("recorded_on", ""),
+                    "system_b.csv",
+                    entry_id,
+                    "recorded_on",
+                    issues,
                 )
 
                 known_keys_b: set[str] = {

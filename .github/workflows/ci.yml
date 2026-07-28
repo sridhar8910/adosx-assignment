@@ -27,23 +27,6 @@ jobs:
       - name: Install linting/formatting tools
         run: pip install --upgrade ruff isort black
 
-      # Auto-fix import/order/format issues so CI can enforce style reliably.
-      - name: Auto-fix formatting and imports
-        run: |
-          set -e
-          isort . || true
-          ruff check . --fix || true
-          black . || true
-          # If any changes were made, commit them back to the branch so the PR/main branch is updated.
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add -A
-            git commit -m "ci: auto-fix lints (isort, ruff --fix, black)" || true
-            git push
-          else
-            echo "No auto-fix changes"
-          fi
 
       - name: Lint with ruff
         run: ruff check .

@@ -74,7 +74,8 @@ class TestImportDynamicColumns:
         from reconciliation.models import SystemARecord, SystemBEntry
 
         rec = SystemARecord(
-            record_id="REC-9999", extra_data={"dynamic_col_1": "val1", "dynamic_col_2": "val2"}
+            record_id="REC-9999",
+            extra_data={"dynamic_col_1": "val1", "dynamic_col_2": "val2"},
         )
         assert rec.extra_data == {"dynamic_col_1": "val1", "dynamic_col_2": "val2"}
 
