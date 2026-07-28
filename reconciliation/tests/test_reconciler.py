@@ -224,3 +224,26 @@ class TestNormalisedRefResolution:
         results = find_disagreements(records, entries)
         # Values match → no disagreements
         assert results == []
+
+
+class TestCrossTenantMatching:
+    """
+    Tests for records where System A and System B have mismatched locations/orgs
+    (e.g., REC-1077 in LOC-102 matched to ENT/2026/4077 in LOC-201).
+    """
+
+    def test_cross_tenant_record_matches_by_id(self):
+        records = [make_record('REC-1077', location_id='LOC-102', total_value='83361.40')]
+        entries = [
+            make_entry(
+                'ENT/2026/4077',
+                resolved_record_id='REC-1077',
+                location_id='LOC-201',
+                value='83361.40',
+            )
+        ]
+
+        results = find_disagreements(records, entries)
+        # Record matches by ID and value → not marked as missing in B
+        missing = [r for r in results if r['reason'] == 'MISSING_IN_B']
+        assert missing == []
