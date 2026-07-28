@@ -26,6 +26,11 @@ psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE adosx_db;"
 ### Backend
 
 ```bash
+# Copy the env template and fill in your PostgreSQL password
+cp .env.example .env
+# Then export required vars (or use a tool like python-decouple to load .env):
+export DB_PASSWORD=your-postgres-password-here   # Windows: $env:DB_PASSWORD='...'
+
 # Install Python dependencies
 python -m pip install -r requirements.txt
 
@@ -41,6 +46,7 @@ python manage.py reconcile
 # Start the API server
 python manage.py runserver
 ```
+
 
 The API will be at `http://127.0.0.1:8000/api/`.
 

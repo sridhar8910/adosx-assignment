@@ -57,12 +57,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
+_db_password = os.environ.get('DB_PASSWORD')
+if not _db_password:
+    raise ValueError(
+        "DB_PASSWORD environment variable is not set. "
+        "Copy .env.example to .env, set DB_PASSWORD, and export it before running."
+    )
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'adosx_db'),
         'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', '2828'),
+        'PASSWORD': _db_password,
         'HOST': os.environ.get('DB_HOST', 'localhost'),
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
