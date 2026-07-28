@@ -1,18 +1,13 @@
 """
-Test-only settings. Uses a separate PostgreSQL database so tests never touch dev data.
-Requires PostgreSQL running with credentials from .env (same as backend.settings).
+Test-only settings. Overrides the database to SQLite in-memory so tests
+never need a running PostgreSQL instance. Zero external dependencies for CI.
 """
-from decouple import config
 
 from .settings import *  # noqa: F401, F403
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_TEST_NAME', default='adosx_test_db'),
-        'USER': DB_USER,
-        'PASSWORD': DB_PASSWORD,
-        'HOST': DB_HOST,
-        'PORT': DB_PORT,
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
     }
 }
