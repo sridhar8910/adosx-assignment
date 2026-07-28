@@ -203,11 +203,10 @@ class Command(BaseCommand):
         dataset_dir = Path(options["dataset_dir"])
         logger.info("load_data started, dataset_dir=%s", dataset_dir)
 
-        _truncate_all()
-
         issues: list[ImportIssue] = []
 
         with transaction.atomic():
+            _truncate_all()
             self._load_locations(dataset_dir, issues)
             location_map: dict[str, int] = {
                 loc.location_id: loc.pk for loc in Location.objects.only("id", "location_id")
