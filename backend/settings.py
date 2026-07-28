@@ -1,30 +1,31 @@
-import os
 from pathlib import Path
+
+from decouple import config, UndefinedValueError
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ---------------------------------------------------------------------------
-# Lightweight .env loader — no extra dependencies required.
-# If a .env file exists at the project root, its KEY=VALUE lines are loaded
-# into os.environ before any config is read. Lines starting with # are ignored.
-# Values already set in the shell environment take precedence.
+# All credentials are loaded from the .env file at project root.
+# .env is in .gitignore and is never committed.
+# Copy .env.example → .env and fill in your values.
 # ---------------------------------------------------------------------------
-_env_file = BASE_DIR / '.env'
-if _env_file.exists():
-    for _line in _env_file.read_text(encoding='utf-8').splitlines():
-        _line = _line.strip()
-        if _line and not _line.startswith('#') and '=' in _line:
-            _key, _, _val = _line.partition('=')
-            os.environ.setdefault(_key.strip(), _val.strip())
 
-# Secret key and DB credentials come from environment variables.
-# Copy .env.example to .env, set DB_PASSWORD, and the loader above picks it up.
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-local-dev-only-do-not-use-in-production'
-)
+# Non-sensitive settings — safe defaults for local dev
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-local-dev-only-change-in-production')
+DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() == 'true'
+# Database credentials — ALL required, no hardcoded fallbacks
+try:
+    DB_PASSWORD = config('DB_PASSWORD')
+except UndefinedValueError:
+    raise ValueError(
+        "DB_PASSWORD is not set. Copy .env.example to .env and set DB_PASSWORD."
+    )
+
+DB_NAME = config('DB_NAME', default='adosx_db')
+DB_USER = config('DB_USER', default='postgres')
+DB_HOST = config('DB_HOST', default='localhost')
+DB_PORT = config('DB_PORT', default='5432')
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
@@ -70,21 +71,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-_db_password = os.environ.get('DB_PASSWORD')
-if not _db_password:
-    raise ValueError(
-        "DB_PASSWORD environment variable is not set. "
-        "Copy .env.example to .env, set DB_PASSWORD, and export it before running."
-    )
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'adosx_db'),
-        'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': _db_password,
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+        'NAME': DB_NAME,
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
     }
 }
 
