@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Lint · Type-check · Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── Linting ────────────────────────────────────────────────────────────
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Format check with ruff
+        run: ruff format --check .
+
+      # ── Type checking ──────────────────────────────────────────────────────
+      - name: Type check with mypy
+        run: mypy reconciliation
+        # Non-zero exit fails the build — keeps types honest on every push
+
+      # ── Tests ──────────────────────────────────────────────────────────────
+      - name: Run tests
+        run: python -m pytest --tb=short -q
+        env:
+          DJANGO_SETTINGS_MODULE: backend.test_settings
+          DJANGO_SECRET_KEY: ci-only-not-a-real-secret
+          # Tests use SQLite in-memory (backend/test_settings.py) — no Postgres needed

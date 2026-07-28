@@ -1,7 +1,16 @@
+# Runtime
 django==6.0.7
 djangorestframework==3.17.1
 django-cors-headers==4.7.0
 psycopg2-binary==2.9.10
 python-decouple==3.8
+
+# Testing
 pytest==8.3.5
 pytest-django==4.9.0
+
+# Code quality (also run in CI)
+ruff==0.5.7
+mypy==1.11.1
+django-stubs==5.0.4
+djangorestframework-stubs==3.15.0

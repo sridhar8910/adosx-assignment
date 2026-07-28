@@ -4,18 +4,24 @@ Core reconciliation logic.
 This module is deliberately free of Django ORM calls so find_disagreements()
 can be unit-tested with plain Python objects — no database required.
 
+Disagreement detection is implemented via the Strategy pattern in rules.py.
+Each disagreement type is a separate ReconciliationRule subclass. RuleEngine
+runs them all; adding a new rule requires no changes here.
+
 The ORM bridge reconcile_from_db() loads all records globally (streaming via
 .iterator()) so cross-tenant record_id matches resolve correctly. Tenant
 isolation is enforced when serving results through the API, not during comparison.
 
-Disagreement types detected
-──────────────────────────
+Disagreement types detected (see reconciliation/rules.py for implementations)
+──────────────────────────────────────────────────────────────────────────────
 MISSING_IN_B        A System A record has no System B entry at all.
 ORPHAN_IN_B         A System B entry whose record_ref resolved to NULL.
 DUPLICATE_IN_B      A System A record matched by more than one System B entry.
 VALUE_MISMATCH      Both systems have a record but report different values.
 UNPARSEABLE_VALUE   System B entry exists but its value could not be parsed.
 """
+
+from __future__ import annotations
 
 from decimal import Decimal
 from typing import TypedDict
@@ -53,119 +59,15 @@ def find_disagreements(
     entries_b: list[EntryB],
 ) -> list[DisagreementResult]:
     """
-    Pure function: compare two lists of records and return disagreements.
+    Pure function: compare two lists of records and return all disagreements.
 
-    reconcile_from_db() passes the full dataset so record_id matches work even
-    when System A and System B rows sit under different orgs (e.g. REC-1077).
-    Tenant isolation is enforced at API query time via location__org_id filtering.
+    Delegates to RuleEngine which runs each ReconciliationRule in turn.
+    reconcile_from_db() passes the full global dataset so cross-tenant
+    record_id matches (e.g. REC-1077) resolve correctly.
+    Tenant isolation is enforced at API query time.
     """
-    results: list[DisagreementResult] = []
-
-    # Index B entries by the System A record_id they resolve to.
-    # Entries with no resolved record are orphans.
-    b_by_record: dict[str, list[EntryB]] = {}
-    orphans: list[EntryB] = []
-
-    for entry in entries_b:
-        resolved = entry['resolved_record_id']
-        if resolved is None:
-            orphans.append(entry)
-        else:
-            b_by_record.setdefault(resolved, []).append(entry)
-
-    # ── Check every System A record ───────────────────────────────────────────
-    for rec in records_a:
-        rid = rec['record_id']
-        matched = b_by_record.get(rid, [])
-
-        if not matched:
-            results.append(DisagreementResult(
-                reason='MISSING_IN_B',
-                record_id_a=rid,
-                entry_id_b='',
-                record_ref_raw='',
-                location_id=rec['location_id'],
-                value_a=rec['total_value'],
-                value_b=None,
-                value_b_raw='',
-                detail=f'{rid} exists in System A but has no entry in System B',
-            ))
-            continue
-
-        if len(matched) > 1:
-            entry_ids = ', '.join(e['entry_id'] for e in matched)
-            results.append(DisagreementResult(
-                reason='DUPLICATE_IN_B',
-                record_id_a=rid,
-                entry_id_b=entry_ids,
-                record_ref_raw=matched[0]['record_ref_raw'],
-                location_id=rec['location_id'],
-                value_a=rec['total_value'],
-                value_b=None,
-                value_b_raw='',
-                detail=f'{rid} has {len(matched)} entries in System B: {entry_ids}',
-            ))
-            # Also check each individual entry's value
-            for entry in matched:
-                _check_value(rec, entry, results)
-            continue
-
-        _check_value(rec, matched[0], results)
-
-    # ── Check orphans ─────────────────────────────────────────────────────────
-    for entry in orphans:
-        results.append(DisagreementResult(
-            reason='ORPHAN_IN_B',
-            record_id_a='',
-            entry_id_b=entry['entry_id'],
-            record_ref_raw=entry['record_ref_raw'],
-            location_id=entry['location_id'],
-            value_a=None,
-            value_b=entry['value'],
-            value_b_raw=entry['value_raw'],
-            detail=(
-                f"System B entry {entry['entry_id']} references "
-                f"'{entry['record_ref_raw']}' which does not exist in System A"
-            ),
-        ))
-
-    return results
-
-
-def _check_value(rec: RecordA, entry: EntryB, results: list) -> None:
-    """Emit VALUE_MISMATCH or UNPARSEABLE_VALUE if the values differ."""
-    if entry['value'] is None:
-        results.append(DisagreementResult(
-            reason='UNPARSEABLE_VALUE',
-            record_id_a=rec['record_id'],
-            entry_id_b=entry['entry_id'],
-            record_ref_raw=entry['record_ref_raw'],
-            location_id=rec['location_id'],
-            value_a=rec['total_value'],
-            value_b=None,
-            value_b_raw=entry['value_raw'],
-            detail=(
-                f"System B entry {entry['entry_id']} has unparseable value "
-                f"'{entry['value_raw']}'"
-            ),
-        ))
-        return
-
-    if rec['total_value'] is not None and entry['value'] != rec['total_value']:
-        results.append(DisagreementResult(
-            reason='VALUE_MISMATCH',
-            record_id_a=rec['record_id'],
-            entry_id_b=entry['entry_id'],
-            record_ref_raw=entry['record_ref_raw'],
-            location_id=rec['location_id'],
-            value_a=rec['total_value'],
-            value_b=entry['value'],
-            value_b_raw=entry['value_raw'],
-            detail=(
-                f"System A total_value={rec['total_value']}, "
-                f"System B value={entry['value']}"
-            ),
-        ))
+    from reconciliation.rules import RuleEngine
+    return RuleEngine().run(records_a, entries_b)
 
 
 # ── ORM bridge ───────────────────────────────────────────────────────────────
@@ -181,82 +83,100 @@ def reconcile_from_db() -> int:
     The delete + bulk_create is wrapped in transaction.atomic() so a failure
     mid-write leaves the table in its previous state, not empty.
     """
-    from reconciliation.models import (
-        Disagreement, Location, SystemARecord, SystemBEntry,
-    )
+    import logging
+
     from django.db import transaction
 
-    all_disagreements: list[DisagreementResult] = []
+    from reconciliation.models import (
+        Disagreement,
+        Location,
+        SystemARecord,
+        SystemBEntry,
+    )
 
-    # Stream global querysets across all orgs so cross-tenant record matches (e.g. REC-1077)
-    # are properly resolved during comparison. Tenant isolation is enforced at API query-time.
+    logger = logging.getLogger(__name__)
+    logger.info("reconcile_from_db: loading records from database")
+
     records_a: list[RecordA] = [
         RecordA(
-            record_id=r['record_id'],
-            location_id=r['location__location_id'],
-            total_value=r['total_value'],
+            record_id=r["record_id"],
+            location_id=r["location__location_id"],
+            total_value=r["total_value"],
         )
-        for r in SystemARecord.objects
-            .values('record_id', 'location__location_id', 'total_value')
-            .iterator()
+        for r in SystemARecord.objects.values(
+            "record_id", "location__location_id", "total_value"
+        ).iterator()
     ]
 
     entries_b: list[EntryB] = [
         EntryB(
-            entry_id=e['entry_id'],
-            record_ref_raw=e['record_ref_raw'],
-            resolved_record_id=e['record_ref__record_id'],  # None if FK is null
-            location_id=e['location__location_id'],
-            value=e['value'],
-            value_raw=e['value_raw'],
+            entry_id=e["entry_id"],
+            record_ref_raw=e["record_ref_raw"],
+            resolved_record_id=e["record_ref__record_id"],
+            location_id=e["location__location_id"],
+            value=e["value"],
+            value_raw=e["value_raw"],
         )
-        for e in SystemBEntry.objects
-            .values(
-                'entry_id', 'record_ref_raw',
-                'record_ref__record_id',
-                'location__location_id',
-                'value', 'value_raw',
-            )
-            .iterator()
+        for e in SystemBEntry.objects.values(
+            "entry_id",
+            "record_ref_raw",
+            "record_ref__record_id",
+            "location__location_id",
+            "value",
+            "value_raw",
+        ).iterator()
     ]
+
+    logger.info(
+        "reconcile_from_db: loaded %d System A records and %d System B entries",
+        len(records_a),
+        len(entries_b),
+    )
 
     all_disagreements = find_disagreements(records_a, entries_b)
 
+    logger.info(
+        "reconcile_from_db: found %d disagreements, persisting", len(all_disagreements)
+    )
+
     # Build FK lookup maps — only PKs needed, not full objects
     location_pk_map: dict[str, int] = {
-        r['location_id']: r['id']
-        for r in Location.objects.values('id', 'location_id').iterator()
+        r["location_id"]: r["id"]
+        for r in Location.objects.values("id", "location_id").iterator()
     }
     record_a_pk_map: dict[str, int] = {
-        r['record_id']: r['id']
-        for r in SystemARecord.objects.values('id', 'record_id').iterator()
+        r["record_id"]: r["id"]
+        for r in SystemARecord.objects.values("id", "record_id").iterator()
     }
     entry_b_pk_map: dict[str, int] = {
-        e['entry_id']: e['id']
-        for e in SystemBEntry.objects.values('id', 'entry_id').iterator()
+        e["entry_id"]: e["id"]
+        for e in SystemBEntry.objects.values("id", "entry_id").iterator()
     }
 
     to_create = []
     for d in all_disagreements:
-        first_entry_id = d['entry_id_b'].split(',')[0].strip() if d['entry_id_b'] else ''
-        to_create.append(Disagreement(
-            reason=d['reason'],
-            record_a_id=record_a_pk_map.get(d['record_id_a']),
-            entry_b_id=entry_b_pk_map.get(first_entry_id),
-            location_id=location_pk_map[d['location_id']],
-            value_a=d['value_a'],
-            value_b=d['value_b'],
-            value_b_raw=d['value_b_raw'],
-            record_id_a=d['record_id_a'],
-            entry_id_b=d['entry_id_b'],
-            record_ref_raw=d['record_ref_raw'],
-            detail=d['detail'],
-        ))
+        first_entry_id = d["entry_id_b"].split(",")[0].strip() if d["entry_id_b"] else ""
+        to_create.append(
+            Disagreement(
+                reason=d["reason"],
+                record_a_id=record_a_pk_map.get(d["record_id_a"]),
+                entry_b_id=entry_b_pk_map.get(first_entry_id),
+                location_id=location_pk_map[d["location_id"]],
+                value_a=d["value_a"],
+                value_b=d["value_b"],
+                value_b_raw=d["value_b_raw"],
+                record_id_a=d["record_id_a"],
+                entry_id_b=d["entry_id_b"],
+                record_ref_raw=d["record_ref_raw"],
+                detail=d["detail"],
+            )
+        )
 
     # Atomic swap: delete old results then insert new ones.
-    # If bulk_create fails, the delete is rolled back — the table is never left empty.
+    # If bulk_create fails the delete is rolled back — table never left empty.
     with transaction.atomic():
         Disagreement.objects.all().delete()
         Disagreement.objects.bulk_create(to_create, batch_size=2000)
 
+    logger.info("reconcile_from_db: done, %d disagreements written", len(to_create))
     return len(to_create)
