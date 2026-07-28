@@ -69,7 +69,7 @@ python -m pytest
 Reads `locations.csv`, `system_a.csv`, and `system_b.csv`. Every anomaly is logged to an `ImportIssue` table — nothing is silently dropped. Dirty `record_ref` values (`rec1034`, `1112`, ` REC - 1070 `) are normalised to canonical form before FK lookup. Unparseable numbers (the Indian-style `1,25,400.00`) are stored as NULL with the raw string preserved.
 
 **Reconciliation engine (`reconciler.py`)**
-A pure function `find_disagreements()` that takes plain dicts and returns disagreements. No Django ORM inside, so it is trivially testable. Catches five disagreement types: missing in B, orphan in B, duplicate in B, value mismatch, unparseable value.
+A pure function `find_disagreements()` that takes plain dicts and returns disagreements. No Django ORM inside, so it is trivially testable. Catches five disagreement types: missing in B, orphan in B, duplicate in B, value mismatch, unparseable value. Reconciliation runs against the **global** dataset (all orgs at once) so that cross-tenant `record_id` matches — where System A records a row under `ORG-A` but System B records the same row under `ORG-B` — are correctly resolved rather than silently dropped as `MISSING_IN_B`. Tenant isolation is enforced at query time in the API layer.
 
 **API**
 Four endpoints under `/api/`:
@@ -90,7 +90,7 @@ A single-page React app. Org selector (top-left), reason filter dropdown, sortab
 - **Authentication.** The brief says skip it. The org parameter stands in for what would be a session claim in production.
 - **Pagination.** 120 rows × 2 systems = no need.
 - **Date / location disagreement detection.** The brief's minimum set is value, missing, orphan, duplicate. Date and location mismatches exist in the data but are not surfaced as disagreement types. They are visible as import issues.
-- **Re-running reconciliation from the UI.** Reconciliation runs via `python manage.py reconcile`. A "Refresh" button wired to a POST endpoint would be a 20-minute addition.
+- **Re-running reconciliation from the UI.** A "Re-run Reconciliation" button is wired to a `POST /api/reconcile/` endpoint so the UI can trigger a fresh comparison without dropping to the terminal.
 - **Production deployment config.** No gunicorn, nginx, or Docker — not asked for.
 
 ---
@@ -101,7 +101,7 @@ I used Kiro (Claude-backed) throughout. The agent wrote the first drafts of all 
 
 **a. Name one thing the AI agent got wrong. How did you notice?**
 
-The agent initially treated `1,25,400.00` (the dirty value in `ENT/2026/4064`) as simply unparseable and flagged it as an `UNPARSEABLE_VALUE` disagreement. That is technically correct, but the agent's first draft of `_parse_decimal` stripped *all* commas before attempting `Decimal()`, which would have silently turned `1,25,400.00` into `125400.00` and then compared it against System A's `183244.16` — producing a VALUE_MISMATCH instead of an UNPARSEABLE_VALUE. I noticed by reading through `_parse_decimal` against the actual CSV value and tracing what `Decimal('125400.00')` would compare against. The fix was to keep the comma-stripping (it is the right normalisation for thousand separators) but to recognise that the *result* after stripping and parsing is what gets stored as `value` — meaning `ENT/2026/4064` would parse successfully to `125400.00` and produce a VALUE_MISMATCH against `183244.16`. I updated the test to match that correct behaviour.
+The agent's reconciler initially iterated per-org: for each tenant, it fetched only that org's System A records and System B entries, then compared them. This is logically correct for the common case but misses a real scenario planted in the dataset: `REC-1077` (System A, `LOC-102` / `ORG-A`) has a matching System B entry `ENT/2026/4077` filed under `LOC-201` (`ORG-B`). During the ORG-A pass, the B entry was invisible (filtered out), so `REC-1077` was wrongly flagged `MISSING_IN_B`. During the ORG-B pass, the B entry resolved to `REC-1077` which wasn't in ORG-B's A-records list, so it disappeared without trace — neither a match nor an orphan. I noticed by cross-checking the raw CSVs by hand: the total `MISSING_IN_B` count the app reported was 3, but my manual count found only 2 genuine missing records. Tracing which record caused the discrepancy led to `REC-1077`/`ENT/2026/4077`. The fix was to run `find_disagreements()` against the full global dataset and enforce tenant filtering only at API query time (which is where it has to live for HTTP security anyway).
 
 **b. Which part of your submission are you least confident about?**
 

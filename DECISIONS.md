@@ -1,8 +1,8 @@
 # DECISIONS
 
-**1. SQLite for the database**
-Alternative: PostgreSQL.
-SQLite is zero-config and the brief is explicit that performance is not being tested (120 rows). PostgreSQL would be the right call for anything production-shaped.
+**1. PostgreSQL for the database**
+Alternative: SQLite.
+PostgreSQL is the production-appropriate choice for a multi-tenant app with real concurrent writers and indexed queries. SQLite has no row-level locking and would be the wrong choice once more than one process touches the data. SQLite is still used for the test suite (via `backend/test_settings.py`) so tests run without any external dependency.
 
 **2. Materialise disagreements into a DB table rather than computing on request**
 Alternative: run the comparison query on every API call.
@@ -27,3 +27,7 @@ Looking at the data: `ENT/2026/4001` has value `88969.92` which matches `REC-100
 **7. Tenant isolation enforced at the query layer, not the data layer**
 Alternative: physically separate tables or schemas per org.
 A single schema with `org_id` on `Location` and consistent filtering in every query is simpler to operate, simpler to migrate, and adequate for this scale. Separate schemas would be worth revisiting for strict regulatory isolation requirements.
+
+**8. Reconciliation runs globally; tenant filtering happens at the API layer**
+Alternative: reconcile per-org in isolation.
+Reconciling per-org misses a genuine class of disagreement: a System A record in `ORG-A` matched by `record_id` to a System B entry filed under `ORG-B` (e.g. `REC-1077`/`ENT-4077` in the real dataset). The per-org approach incorrectly flags `REC-1077` as `MISSING_IN_B` and silently drops the matching B entry — the exact scenario the brief's "few dozen rows anyone cares about" is testing. The fix is to compare records globally so the match is found by `record_id`, then store the disagreement anchored to the System A location. The API layer applies `location__org_id` filtering at query time so tenants only see their own data; no data ever crosses the boundary at the HTTP layer.
