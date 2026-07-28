@@ -23,7 +23,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from django.core.management.base import BaseCommand
-from django.db import connection, transaction
+from django.db import transaction
 
 from reconciliation.models import (
     Disagreement,
@@ -115,19 +115,32 @@ def _normalise_record_ref(raw: str) -> str | None:
 
 def _truncate_all():
     """
-    TRUNCATE all reconciliation tables in dependency order and reset sequences.
-    Much faster than .delete() for large datasets — O(1) regardless of row count.
+    Clear all reconciliation tables in dependency order.
+    Uses TRUNCATE on PostgreSQL (instant regardless of row count) and
+    falls back to DELETE on SQLite (used by the test suite).
     """
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            TRUNCATE TABLE
-                reconciliation_disagreement,
-                reconciliation_importissue,
-                reconciliation_systembentry,
-                reconciliation_systemarecord,
-                reconciliation_location
-            RESTART IDENTITY CASCADE;
-        """)
+    from django.db import connection
+    if connection.vendor == 'postgresql':
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                TRUNCATE TABLE
+                    reconciliation_disagreement,
+                    reconciliation_importissue,
+                    reconciliation_systembentry,
+                    reconciliation_systemarecord,
+                    reconciliation_location
+                RESTART IDENTITY CASCADE;
+            """)
+    else:
+        # SQLite fallback (used in tests and local dev without Postgres)
+        from reconciliation.models import (
+            Disagreement, ImportIssue, Location, SystemARecord, SystemBEntry,
+        )
+        Disagreement.objects.all().delete()
+        ImportIssue.objects.all().delete()
+        SystemBEntry.objects.all().delete()
+        SystemARecord.objects.all().delete()
+        Location.objects.all().delete()
 
 
 class Command(BaseCommand):
