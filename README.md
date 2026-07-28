@@ -16,11 +16,10 @@ A full-stack tool that loads two systems' records of the same events, finds wher
 
 ### Database setup
 
-Copy `.env.example` to `.env` and set `DB_PASSWORD` to your local Postgres password. Create the databases if needed:
+Copy `.env.example` to `.env` and set `DB_PASSWORD` to your local Postgres password. Create the database if needed:
 
 ```bash
 psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE adosx_db;"
-psql -U postgres -h 127.0.0.1 -c "CREATE DATABASE adosx_test_db;"   # for pytest
 ```
 
 ### Backend
@@ -62,7 +61,7 @@ Open `http://localhost:5173`. The Vite dev server proxies `/api/*` to Django.
 
 ### Tests
 
-Requires PostgreSQL running (uses `adosx_test_db` by default — see `.env.example`).
+Tests use SQLite in-memory (via `test_settings.py`), so no database setup is needed.
 
 ```bash
 python -m pip install pytest pytest-django
@@ -106,16 +105,21 @@ A single-page React app. Org selector, reason filter dropdown, sortable columns 
 
 ## How I worked with the agent
 
-I used Kiro (Claude-backed) throughout. The agent wrote the first drafts of all files: models, importer, reconciler, views, serializers, tests, and the React app. My role was directing, reviewing, and correcting.
+I used Kiro (Claude-backed) for the whole thing. It wrote first drafts of everything — models, importer, reconciler, views, tests, React app. I steered it, reviewed what it produced, and caught the things it missed.
 
 **a. Name one thing the AI agent got wrong. How did you notice?**
 
-The agent's reconciler initially iterated per-org: for each tenant, it fetched only that org's System A records and System B entries, then compared them. This is logically correct for the common case but misses a real scenario planted in the dataset: `REC-1077` (System A, `LOC-102` / `ORG-A`) has a matching System B entry `ENT/2026/4077` filed under `LOC-201` (`ORG-B`). During the ORG-A pass, the B entry was invisible (filtered out), so `REC-1077` was wrongly flagged `MISSING_IN_B`. During the ORG-B pass, the B entry resolved to `REC-1077` which wasn't in ORG-B's A-records list, so it disappeared without trace — neither a match nor an orphan. I noticed by cross-checking the raw CSVs by hand: the total `MISSING_IN_B` count the app reported was 3, but my manual count found only 2 genuine missing records. Tracing which record caused the discrepancy led to `REC-1077`/`ENT/2026/4077`. The fix was to run `find_disagreements()` against the full global dataset and enforce tenant filtering only at API query time (which is where it has to live for HTTP security anyway).
+The big one was how it handled tenant boundaries during reconciliation. The agent's first version of `reconcile_from_db()` looped through each org separately — fetch ORG-A's System A records, fetch ORG-A's System B entries, compare, move on to ORG-B. Sounds reasonable, and it works for 99% of the data. But there's one row in the dataset that breaks it: REC-1077 lives in LOC-102 (that's ORG-A), but its matching System B entry ENT/2026/4077 is filed under LOC-201 (ORG-B). So when the agent ran the ORG-A pass, that B entry was invisible — wrong org, filtered out — and REC-1077 got flagged as `MISSING_IN_B`. During the ORG-B pass, the entry was there but its matching A record wasn't, so it just… vanished. Not an orphan, not a match, just gone.
 
-**b. Which part of your submission are you least confident about?**
+I caught it because the numbers didn't add up. The app said 3 records were missing in B, and I went through the CSVs by hand and could only find 2. Took me a while to figure out which record was the extra one, but once I landed on REC-1077 and saw it was cross-org, the bug was obvious. The fix was to stop filtering by org during comparison — run the match globally, then let the API layer handle who sees what. That's where tenant isolation belongs anyway.
 
-The `_normalise_record_ref` function. It uses a trailing-digit regex to extract the number from any dirty format, which covers the three patterns in this dataset. But if a real export contained a ref like `REC-1034-AMENDED` or a non-numeric suffix, the regex would extract the wrong digit run. I chose simplicity over robustness here because the brief says "assume real exports are worse" but the actual data has only three dirty patterns. A production version would need a stricter parser with explicit format recognition.
+**b. Which part of your submission are you least confident about, and why?**
+
+Honestly, the `_normalise_record_ref` function. It works perfectly for the three dirty patterns in this dataset — `rec1034`, `1112`, ` REC - 1070 ` — but it's basically a regex that grabs trailing digits and slaps `REC-` in front. If someone sends a ref like `REC-1034-AMENDED` or `REC-1034/V2`, it would grab the wrong number or fail entirely. I kept it simple because the brief said to, and overengineering a parser for patterns that don't exist in the data felt like the wrong trade-off for a one-day exercise. But in production, I'd want explicit format recognition with a fallback to "log it and move on" rather than silent mismatches.
 
 **c. If you had a second day, what would you fix first?**
 
-The tenant isolation relies on an `?org=` query parameter because authentication is out of scope. On a second day I would add token-based authentication (Django's built-in token auth or SimpleJWT) and derive the org from the token rather than trusting the caller to supply it. That single change would make the isolation genuinely secure rather than just correct-by-convention. After that: surface date and location disagreements, which are present in the data and currently ignored.
+Authentication. Right now tenant isolation works correctly — ORG-A genuinely can't see ORG-B's data — but it's held together by a query parameter that anyone can change. That's fine for a take-home where the brief explicitly says to skip auth, but it would keep me up at night in production. I'd add SimpleJWT or Django's built-in token auth, derive the org from the token claims, and remove the `?org=` parameter entirely. One change, and the isolation goes from "correct by convention" to "actually secure."
+
+After that, I'd add location and date disagreement detection. The data has at least one clear case (REC-1077 at different locations in A vs B) that the current system resolves correctly but doesn't surface as its own disagreement type. That feels like something a real user would want to see.
+
