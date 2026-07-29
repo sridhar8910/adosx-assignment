@@ -55,6 +55,7 @@ def _log(
     raw: str,
     msg: str,
     severity: str = "WARNING",
+    org_id: str = "",
 ) -> None:
     """Append an ImportIssue to *issues* and emit a matching log record."""
     issues.append(
@@ -65,6 +66,7 @@ def _log(
             raw_value=str(raw)[:200],
             message=msg,
             severity=severity,
+            org_id=org_id,
         )
     )
     level = logging.WARNING if severity in ("WARNING", "ERROR") else logging.INFO
@@ -77,6 +79,7 @@ def _parse_decimal(
     row_id: str,
     field: str,
     issues: list[ImportIssue],
+    org_id: str = "",
 ) -> tuple[Decimal | None, bool]:
     """
     Parse a decimal from a potentially dirty string.
@@ -106,6 +109,7 @@ def _parse_decimal(
             raw,
             f"Cannot parse '{raw}' as a number — stored as NULL",
             "WARNING",
+            org_id=org_id,
         )
         return None, False
 
@@ -116,6 +120,7 @@ def _parse_date(
     row_id: str,
     field: str,
     issues: list[ImportIssue],
+    org_id: str = "",
 ) -> date | None:
     """Parse ISO date YYYY-MM-DD. Blank → None (no issue). Bad format → None + issue."""
     stripped = raw.strip()
@@ -132,6 +137,7 @@ def _parse_date(
             raw,
             f"Cannot parse '{raw}' as a date — stored as NULL",
             "WARNING",
+            org_id=org_id,
         )
         return None
 
@@ -212,14 +218,18 @@ class Command(BaseCommand):
             location_map: dict[str, int] = {
                 loc.location_id: loc.pk for loc in Location.objects.only("id", "location_id")
             }
+            # Maps location_id -> org_id so loaders can tag ImportIssues by tenant
+            location_org_map: dict[str, str] = {
+                loc.location_id: loc.org_id for loc in Location.objects.only("location_id", "org_id")
+            }
 
-            self._load_system_a(dataset_dir, location_map, issues)
+            self._load_system_a(dataset_dir, location_map, location_org_map, issues)
             record_a_id_map: dict[str, int] = {
                 r["record_id"]: r["id"]
                 for r in SystemARecord.objects.values("id", "record_id").iterator()
             }
 
-            self._load_system_b(dataset_dir, location_map, record_a_id_map, issues)
+            self._load_system_b(dataset_dir, location_map, location_org_map, record_a_id_map, issues)
 
             ImportIssue.objects.bulk_create(issues, batch_size=2000)
             logger.info("Logged %d import issues to ImportIssue table", len(issues))
@@ -256,6 +266,7 @@ class Command(BaseCommand):
         self,
         dataset_dir: Path,
         location_map: dict[str, int],
+        location_org_map: dict[str, str],
         issues: list[ImportIssue],
     ) -> None:
         a_path = dataset_dir / "system_a.csv"
@@ -295,15 +306,18 @@ class Command(BaseCommand):
                         loc_id,
                         f"Unknown location_id '{loc_id}' — skipped",
                         "ERROR",
+                        # org unknown because the location doesn't exist
                     )
                     continue
 
+                org = location_org_map.get(loc_id, "")
                 event_date = _parse_date(
                     row.get("event_date", ""),
                     "system_a.csv",
                     rec_id,
                     "event_date",
                     issues,
+                    org_id=org,
                 )
                 base_value, _ = _parse_decimal(
                     row.get("base_value", ""),
@@ -311,6 +325,7 @@ class Command(BaseCommand):
                     rec_id,
                     "base_value",
                     issues,
+                    org_id=org,
                 )
                 adjustment, _ = _parse_decimal(
                     row.get("adjustment", ""),
@@ -318,6 +333,7 @@ class Command(BaseCommand):
                     rec_id,
                     "adjustment",
                     issues,
+                    org_id=org,
                 )
                 total_value, _ = _parse_decimal(
                     row.get("total_value", ""),
@@ -325,6 +341,7 @@ class Command(BaseCommand):
                     rec_id,
                     "total_value",
                     issues,
+                    org_id=org,
                 )
 
                 known_keys: set[str] = {
@@ -371,6 +388,7 @@ class Command(BaseCommand):
         self,
         dataset_dir: Path,
         location_map: dict[str, int],
+        location_org_map: dict[str, str],
         record_a_id_map: dict[str, int],
         issues: list[ImportIssue],
     ) -> None:
@@ -414,6 +432,7 @@ class Command(BaseCommand):
                     )
                     continue
 
+                org = location_org_map.get(loc_id, "")
                 raw_ref = row.get("record_ref", "").strip()
                 canonical_ref = _normalise_record_ref(raw_ref)
                 record_a_pk: int | None = None
@@ -427,6 +446,7 @@ class Command(BaseCommand):
                         raw_ref,
                         f"Cannot normalise record_ref '{raw_ref}' — FK will be NULL",
                         "WARNING",
+                        org_id=org,
                     )
                 else:
                     record_a_pk = record_a_id_map.get(canonical_ref)
@@ -440,6 +460,7 @@ class Command(BaseCommand):
                             f"record_ref '{raw_ref}' (normalised: '{canonical_ref}') "
                             f"does not match any System A record — FK will be NULL",
                             "WARNING",
+                            org_id=org,
                         )
 
                 if canonical_ref and canonical_ref != raw_ref:
@@ -451,16 +472,18 @@ class Command(BaseCommand):
                         raw_ref,
                         f"Dirty record_ref '{raw_ref}' normalised to '{canonical_ref}'",
                         "INFO",
+                        org_id=org,
                     )
 
                 value_raw = row.get("value", "").strip()
-                value, _ = _parse_decimal(value_raw, "system_b.csv", entry_id, "value", issues)
+                value, _ = _parse_decimal(value_raw, "system_b.csv", entry_id, "value", issues, org_id=org)
                 recorded_on = _parse_date(
                     row.get("recorded_on", ""),
                     "system_b.csv",
                     entry_id,
                     "recorded_on",
                     issues,
+                    org_id=org,
                 )
 
                 known_keys_b: set[str] = {

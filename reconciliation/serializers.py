@@ -49,5 +49,6 @@ class ImportIssueSerializer(serializers.ModelSerializer):
             "raw_value",
             "message",
             "severity",
+            "org_id",
             "created_at",
         ]

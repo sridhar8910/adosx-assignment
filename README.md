@@ -101,10 +101,11 @@ A single-page React app designed as an **Observability Control Room Split-Pane W
 
 ## What I deliberately did not build
 
-- **Authentication.** The brief says skip it. The org parameter stands in for what would be a session claim in production.
+- **Authentication.** The brief says skip it. The `org` query parameter stands in for what would be an authenticated tenant claim in production. This is application-level filtering, not authorization — a distinction I would fix first in production by deriving org from the token principal and removing `?org=` entirely.
 - **Pagination.** 120 rows × 2 systems = no need.
 - **Date / location disagreement detection.** The brief's minimum set is value, missing, orphan, duplicate. Date and location mismatches exist in the data (e.g. REC-1077 filed under different locations in A vs B) but are not surfaced as disagreement types when values agree.
-- **Tenant-scoped import issues.** The import-issues endpoint returns all orgs' anomalies for debugging; production would scope this to admin roles.
+- **Simpler frontend.** The brief explicitly says "a plain table is the correct answer." I built well beyond that — a dashboard with topology maps, a split-pane inspector, and a terminal console. The core logic is correct and that complexity did not break anything, but in hindsight it was an overstep on scope discipline. A 2-year engineer should prioritize correctness and judgment over polish; a plain table with org/reason filters would have been the better trade-off for this exercise.
+- **Tenant-scoped import issues originally.** The initial version of the import-issues endpoint returned all orgs' anomalies. This has been corrected: the endpoint now requires `?org=` and returns only that org's issues, consistent with the same tenant model used for disagreements.
 - **Production deployment config.** No gunicorn, nginx, or Docker — not asked for.
 
 ---

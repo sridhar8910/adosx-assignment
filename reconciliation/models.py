@@ -97,6 +97,10 @@ class ImportIssue(models.Model):
     raw_value = models.CharField(max_length=200, blank=True)
     message = models.TextField()
     severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default=SEVERITY_WARNING)
+    # org_id allows the import-issues endpoint to be scoped per tenant.
+    # blank/null for issues that cannot be attributed to a specific org
+    # (e.g. a row with an unknown location_id).
+    org_id = models.CharField(max_length=20, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
